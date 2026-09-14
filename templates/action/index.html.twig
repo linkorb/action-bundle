@@ -1,0 +1,56 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Actions{% endblock %}
+
+{% block body %}
+<div class="container-fluid">
+    <h1>Actions</h1>
+    <p class="text-muted">Browse and execute registered actions</p>
+
+    {% for packName, actions in groupedActions %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-box-open me-2"></i>
+                    {{ packName }}
+                </h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Description</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for name, action in actions %}
+                            <tr>
+                                <td>
+                                    <code>{{ action.name }}</code>
+                                </td>
+                                <td>{{ action.description }}</td>
+                                <td class="text-end">
+                                    <a href="{{ path('linkorb_bundle__action_view', { name: action.name }) }}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-play me-1"></i> Execute
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>
+            No actions registered. Create an ActionPack and tag it with <code>action.pack</code> to register actions.
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+
+
+

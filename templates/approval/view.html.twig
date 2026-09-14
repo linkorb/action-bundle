@@ -1,0 +1,121 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Approval {{ approval.xuid }}{% endblock %}
+
+{% block body %}
+<div class="container-fluid">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ path('linkorb_bundle__action_approval_index') }}">Approvals</a></li>
+            <li class="breadcrumb-item active">{{ approval.xuid }}</li>
+        </ol>
+    </nav>
+
+    <h1>Approval <code>{{ approval.xuid }}</code></h1>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Details</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-3">Action</dt>
+                        <dd class="col-sm-9"><code>{{ approval.actionName }}</code></dd>
+
+                        <dt class="col-sm-3">Caller</dt>
+                        <dd class="col-sm-9">{{ approval.callerIdentifier }}</dd>
+
+                        <dt class="col-sm-3">Status</dt>
+                        <dd class="col-sm-9">
+                            {% if approval.status == 'pending' %}
+                                {% if approval.expired %}
+                                    <span class="badge bg-secondary">expired</span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark">pending</span>
+                                {% endif %}
+                            {% elseif approval.status == 'approved' %}
+                                <span class="badge bg-success">approved</span>
+                            {% elseif approval.status == 'rejected' %}
+                                <span class="badge bg-danger">rejected</span>
+                            {% elseif approval.status == 'executed' %}
+                                <span class="badge bg-info">executed</span>
+                            {% elseif approval.status == 'expired' %}
+                                <span class="badge bg-secondary">expired</span>
+                            {% else %}
+                                <span class="badge bg-light text-dark">{{ approval.status }}</span>
+                            {% endif %}
+                        </dd>
+
+                        <dt class="col-sm-3">Created</dt>
+                        <dd class="col-sm-9">{{ approval.createdAt|date('Y-m-d H:i:s') }}</dd>
+
+                        <dt class="col-sm-3">Expires</dt>
+                        <dd class="col-sm-9">{{ approval.expiresAt|date('Y-m-d H:i:s') }}</dd>
+
+                        {% if approval.decidedAt %}
+                            <dt class="col-sm-3">Decided at</dt>
+                            <dd class="col-sm-9">{{ approval.decidedAt|date('Y-m-d H:i:s') }}</dd>
+
+                            <dt class="col-sm-3">Decided by</dt>
+                            <dd class="col-sm-9">{{ approval.decidedBy }}</dd>
+                        {% endif %}
+
+                        {% if approval.reason %}
+                            <dt class="col-sm-3">Reason</dt>
+                            <dd class="col-sm-9">{{ approval.reason }}</dd>
+                        {% endif %}
+                    </dl>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Input</h5>
+                </div>
+                <div class="card-body">
+                    <pre class="mb-0"><code>{{ approval.input|json_encode(constant('JSON_PRETTY_PRINT') b-or constant('JSON_UNESCAPED_SLASHES')) }}</code></pre>
+                </div>
+            </div>
+
+            {% if approval.executionResult %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Execution Result</h5>
+                    </div>
+                    <div class="card-body">
+                        <pre class="mb-0"><code>{{ approval.executionResult|json_encode(constant('JSON_PRETTY_PRINT') b-or constant('JSON_UNESCAPED_SLASHES')) }}</code></pre>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="col-md-4">
+            {% if approval.status == 'pending' and not approval.expired %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Decision</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" action="{{ path('linkorb_bundle__action_approval_approve', { xuid: approval.xuid }) }}" class="mb-3">
+                            <button type="submit" class="btn btn-success w-100" onclick="return confirm('Approve and execute this action?')">
+                                <i class="fas fa-check me-1"></i>Approve &amp; Execute
+                            </button>
+                        </form>
+
+                        <form method="post" action="{{ path('linkorb_bundle__action_approval_reject', { xuid: approval.xuid }) }}">
+                            <div class="mb-2">
+                                <textarea name="reason" class="form-control" rows="2" placeholder="Reason for rejection (optional)"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-danger w-100" onclick="return confirm('Reject this action request?')">
+                                <i class="fas fa-times me-1"></i>Reject
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

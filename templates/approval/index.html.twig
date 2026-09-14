@@ -1,0 +1,94 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Action Approvals{% endblock %}
+
+{% block body %}
+<div class="container-fluid">
+    <h1>Action Approvals</h1>
+    <p class="text-muted">Review and manage pending action approval requests</p>
+
+    <div class="mb-3">
+        <div class="btn-group" role="group">
+            <a href="{{ path('linkorb_bundle__action_approval_index') }}" class="btn btn-sm {{ currentStatus is null ? 'btn-primary' : 'btn-outline-primary' }}">All</a>
+            <a href="{{ path('linkorb_bundle__action_approval_index', { status: 'pending' }) }}" class="btn btn-sm {{ currentStatus == 'pending' ? 'btn-primary' : 'btn-outline-primary' }}">Pending</a>
+            <a href="{{ path('linkorb_bundle__action_approval_index', { status: 'approved' }) }}" class="btn btn-sm {{ currentStatus == 'approved' ? 'btn-primary' : 'btn-outline-primary' }}">Approved</a>
+            <a href="{{ path('linkorb_bundle__action_approval_index', { status: 'rejected' }) }}" class="btn btn-sm {{ currentStatus == 'rejected' ? 'btn-primary' : 'btn-outline-primary' }}">Rejected</a>
+            <a href="{{ path('linkorb_bundle__action_approval_index', { status: 'executed' }) }}" class="btn btn-sm {{ currentStatus == 'executed' ? 'btn-primary' : 'btn-outline-primary' }}">Executed</a>
+            <a href="{{ path('linkorb_bundle__action_approval_index', { status: 'expired' }) }}" class="btn btn-sm {{ currentStatus == 'expired' ? 'btn-primary' : 'btn-outline-primary' }}">Expired</a>
+        </div>
+    </div>
+
+    {% if approvals|length > 0 %}
+        <div class="card">
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>XUID</th>
+                            <th>Action</th>
+                            <th>Caller</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Expires</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for approval in approvals %}
+                            <tr>
+                                <td>
+                                    <a href="{{ path('linkorb_bundle__action_approval_view', { xuid: approval.xuid }) }}">
+                                        <code>{{ approval.xuid }}</code>
+                                    </a>
+                                </td>
+                                <td><code>{{ approval.actionName }}</code></td>
+                                <td>{{ approval.callerIdentifier }}</td>
+                                <td>
+                                    {% if approval.status == 'pending' %}
+                                        {% if approval.expired %}
+                                            <span class="badge bg-secondary">expired</span>
+                                        {% else %}
+                                            <span class="badge bg-warning text-dark">pending</span>
+                                        {% endif %}
+                                    {% elseif approval.status == 'approved' %}
+                                        <span class="badge bg-success">approved</span>
+                                    {% elseif approval.status == 'rejected' %}
+                                        <span class="badge bg-danger">rejected</span>
+                                    {% elseif approval.status == 'executed' %}
+                                        <span class="badge bg-info">executed</span>
+                                    {% elseif approval.status == 'expired' %}
+                                        <span class="badge bg-secondary">expired</span>
+                                    {% else %}
+                                        <span class="badge bg-light text-dark">{{ approval.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ approval.createdAt|date('Y-m-d H:i:s') }}</td>
+                                <td>{{ approval.expiresAt|date('Y-m-d H:i:s') }}</td>
+                                <td class="text-end">
+                                    {% if approval.status == 'pending' and not approval.expired %}
+                                        <form method="post" action="{{ path('linkorb_bundle__action_approval_approve', { xuid: approval.xuid }) }}" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Approve and execute this action?')">
+                                                <i class="fas fa-check me-1"></i>Approve
+                                            </button>
+                                        </form>
+                                        <form method="post" action="{{ path('linkorb_bundle__action_approval_reject', { xuid: approval.xuid }) }}" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Reject this action request?')">
+                                                <i class="fas fa-times me-1"></i>Reject
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>
+            No approval requests found{% if currentStatus %} with status "{{ currentStatus }}"{% endif %}.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

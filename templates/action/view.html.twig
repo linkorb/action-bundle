@@ -1,0 +1,326 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ action.name }} - Action{% endblock %}
+
+{% block styles %}
+{{ parent() }}
+<style>
+    .bg-purple {
+        background-color: #7c3aed !important;
+        color: white !important;
+    }
+    .llm-call-container .llm-toggle-icon {
+        transition: transform 0.2s ease;
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="container-fluid">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ path('linkorb_bundle__action_index') }}">Actions</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ action.name }}</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cog me-2"></i>
+                        {{ action.name }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p>{{ action.description }}</p>
+
+                    <h6>Input Schema</h6>
+                    <pre class="bg-light p-3 rounded"><code>{{ action.inputSchema|json_encode(constant('JSON_PRETTY_PRINT') b-or constant('JSON_UNESCAPED_SLASHES')) }}</code></pre>
+
+                    <h6>Output Schema</h6>
+                    <pre class="bg-light p-3 rounded"><code>{{ action.outputSchema|json_encode(constant('JSON_PRETTY_PRINT') b-or constant('JSON_UNESCAPED_SLASHES')) }}</code></pre>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-play me-2"></i>
+                        Execute
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="executeForm">
+                        <div class="mb-3">
+                            <label for="json" class="form-label">Input (JSON)</label>
+                            <textarea name="json" id="json" class="form-control font-monospace" rows="10">{{ json }}</textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-play me-1"></i> Execute
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" id="streamBtn">
+                            <i class="fas fa-stream me-1"></i> Execute (Streaming)
+                        </button>
+                        <button type="button" class="btn btn-outline-danger" id="clearBtn">
+                            <i class="fas fa-trash me-1"></i> Clear Output
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card mb-4 {% if messages is not defined or messages|length == 0 %}d-none{% endif %}" id="messagesCard">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>
+                        Messages
+                    </h5>
+                    <button type="button" class="btn btn-sm btn-outline-danger" id="clearMessagesBtn">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="messages-container bg-dark text-light p-3 rounded font-monospace" id="messagesContainer" style="max-height: 400px; overflow-y: auto;">
+                        {% if messages is defined %}
+                            {% for message in messages %}
+                                <div class="message-line mb-1">
+                                    {% if message.type == 'log' %}
+                                        <span class="badge {% if message.level == 'error' %}bg-danger{% elseif message.level == 'warning' %}bg-warning text-dark{% elseif message.level == 'debug' %}bg-secondary{% else %}bg-info{% endif %}">{{ message.level }}</span>
+                                        {{ message.message }}
+                                    {% elseif message.type == 'progress' %}
+                                        <span class="badge bg-primary">progress</span>
+                                        {{ message.toArray.current }}/{{ message.toArray.total }} ({{ message.toArray.percentage }}%)
+                                        {% if message.toArray.message is defined and message.toArray.message %}
+                                            - {{ message.toArray.message }}
+                                        {% endif %}
+                                    {% elseif message.type == 'output' %}
+                                        <span class="badge bg-success">output</span>
+                                        <pre class="mb-0 text-success">{{ message.toArray.data|json_encode(constant('JSON_PRETTY_PRINT') b-or constant('JSON_UNESCAPED_SLASHES')) }}</pre>
+                                    {% elseif message.type == 'error' %}
+                                        <span class="badge bg-danger">error</span>
+                                        {{ message.message }}
+                                    {% elseif message.type == 'llm_call' %}
+                                        {% set llmData = message.toArray %}
+                                        {% set uniqueId = 'llm-' ~ loop.index ~ '-' ~ random() %}
+                                        <div class="llm-call-container mb-2">
+                                            <div class="d-flex align-items-center" style="cursor: pointer;" onclick="document.getElementById('{{ uniqueId }}').classList.toggle('d-none'); this.querySelector('.llm-toggle-icon').classList.toggle('fa-chevron-right'); this.querySelector('.llm-toggle-icon').classList.toggle('fa-chevron-down');">
+                                                <span class="badge {% if llmData.success %}bg-purple{% else %}bg-danger{% endif %} me-2">
+                                                    <i class="fas fa-robot me-1"></i>LLM
+                                                </span>
+                                                <i class="fas fa-chevron-right llm-toggle-icon me-2" style="font-size: 0.7em;"></i>
+                                                <span class="{% if llmData.success %}text-info{% else %}text-danger{% endif %}">
+                                                    {{ llmData.summary }}
+                                                </span>
+                                            </div>
+                                            <div id="{{ uniqueId }}" class="d-none mt-2 ms-4 p-2 border rounded" style="background-color: rgba(100, 100, 255, 0.1);">
+                                                <div class="mb-2">
+                                                    <strong class="text-warning">Request:</strong>
+                                                    <pre class="mb-0 mt-1 p-2 rounded" style="background-color: rgba(0,0,0,0.3); max-height: 300px; overflow-y: auto;"><code>{{ llmData.request|json_encode(constant('JSON_PRETTY_PRINT') b-or constant('JSON_UNESCAPED_SLASHES')) }}</code></pre>
+                                                </div>
+                                                {% if llmData.response is defined %}
+                                                <div class="mb-2">
+                                                    <strong class="text-success">Response:</strong>
+                                                    <pre class="mb-0 mt-1 p-2 rounded" style="background-color: rgba(0,0,0,0.3); max-height: 300px; overflow-y: auto;"><code>{{ llmData.response|json_encode(constant('JSON_PRETTY_PRINT') b-or constant('JSON_UNESCAPED_SLASHES')) }}</code></pre>
+                                                </div>
+                                                {% endif %}
+                                                {% if llmData.error is defined %}
+                                                <div class="mb-2">
+                                                    <strong class="text-danger">Error:</strong>
+                                                    <span class="text-danger">{{ llmData.error }}</span>
+                                                </div>
+                                                {% endif %}
+                                                <div class="small text-muted">
+                                                    {% if llmData.duration_ms is defined %}Duration: {{ llmData.duration_ms|round }}ms{% endif %}
+                                                    {% if llmData.prompt_tokens is defined %} | Prompt: {{ llmData.prompt_tokens }}{% endif %}
+                                                    {% if llmData.completion_tokens is defined %} | Completion: {{ llmData.completion_tokens }}{% endif %}
+                                                    {% if llmData.total_tokens is defined %} | Total: {{ llmData.total_tokens }} tokens{% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ message.type }}</span>
+                                        {{ message.toJson }}
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4 {% if output is null %}d-none{% endif %}" id="resultCard">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-terminal me-2"></i>
+                        Result
+                    </h5>
+                    <button type="button" class="btn btn-sm btn-outline-danger" id="clearResultBtn">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="card-body">
+                    <pre class="bg-light p-3 rounded mb-0" id="resultContent"><code>{{ output }}</code></pre>
+                </div>
+            </div>
+
+            <div class="card mb-4 d-none" id="streamOutput">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-stream me-2"></i>
+                        Streaming Output
+                    </h5>
+                    <button type="button" class="btn btn-sm btn-outline-danger" id="clearStreamBtn">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="messages-container bg-dark text-light p-3 rounded font-monospace" id="streamMessages" style="max-height: 400px; overflow-y: auto;">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Clear buttons
+document.getElementById('clearBtn').addEventListener('click', function() {
+    // Clear all output sections
+    document.getElementById('messagesCard').classList.add('d-none');
+    document.getElementById('messagesContainer').innerHTML = '';
+    document.getElementById('resultCard').classList.add('d-none');
+    document.getElementById('resultContent').innerHTML = '<code></code>';
+    document.getElementById('streamOutput').classList.add('d-none');
+    document.getElementById('streamMessages').innerHTML = '';
+});
+
+document.getElementById('clearMessagesBtn').addEventListener('click', function() {
+    document.getElementById('messagesCard').classList.add('d-none');
+    document.getElementById('messagesContainer').innerHTML = '';
+});
+
+document.getElementById('clearResultBtn').addEventListener('click', function() {
+    document.getElementById('resultCard').classList.add('d-none');
+    document.getElementById('resultContent').innerHTML = '<code></code>';
+});
+
+document.getElementById('clearStreamBtn').addEventListener('click', function() {
+    document.getElementById('streamOutput').classList.add('d-none');
+    document.getElementById('streamMessages').innerHTML = '';
+});
+
+document.getElementById('streamBtn').addEventListener('click', async function() {
+    const json = document.getElementById('json').value;
+    const streamOutput = document.getElementById('streamOutput');
+    const streamMessages = document.getElementById('streamMessages');
+
+    streamOutput.classList.remove('d-none');
+    streamMessages.innerHTML = '';
+
+    try {
+        const response = await fetch('{{ path('linkorb_bundle__action_execute_stream', { name: action.name }) }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: json
+        });
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const lines = decoder.decode(value).split('\n');
+            for (const line of lines) {
+                if (!line.trim()) continue;
+
+                try {
+                    const message = JSON.parse(line);
+                    const div = document.createElement('div');
+                    div.className = 'message-line mb-1';
+
+                    let badgeClass = 'bg-secondary';
+                    let content = JSON.stringify(message);
+
+                    if (message.type === 'log') {
+                        if (message.level === 'error') badgeClass = 'bg-danger';
+                        else if (message.level === 'warning') badgeClass = 'bg-warning text-dark';
+                        else if (message.level === 'debug') badgeClass = 'bg-secondary';
+                        else badgeClass = 'bg-info';
+                        content = message.message;
+                        div.innerHTML = `<span class="badge ${badgeClass}">${message.level}</span> ${content}`;
+                    } else if (message.type === 'progress') {
+                        badgeClass = 'bg-primary';
+                        content = `${message.current}/${message.total} (${message.percentage}%)`;
+                        if (message.message) content += ` - ${message.message}`;
+                        div.innerHTML = `<span class="badge ${badgeClass}">progress</span> ${content}`;
+                    } else if (message.type === 'output') {
+                        badgeClass = 'bg-success';
+                        div.innerHTML = `<span class="badge ${badgeClass}">output</span><pre class="mb-0 text-success">${JSON.stringify(message.data, null, 2)}</pre>`;
+                    } else if (message.type === 'error') {
+                        badgeClass = 'bg-danger';
+                        div.innerHTML = `<span class="badge ${badgeClass}">error</span> ${message.message}`;
+                    } else if (message.type === 'llm_call') {
+                        const uniqueId = 'llm-stream-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+                        const statusBadge = message.success ? 'bg-purple' : 'bg-danger';
+                        const textClass = message.success ? 'text-info' : 'text-danger';
+                        
+                        let detailsHtml = `<div class="mb-2"><strong class="text-warning">Request:</strong><pre class="mb-0 mt-1 p-2 rounded" style="background-color: rgba(0,0,0,0.3); max-height: 300px; overflow-y: auto;"><code>${JSON.stringify(message.request, null, 2)}</code></pre></div>`;
+                        
+                        if (message.response) {
+                            detailsHtml += `<div class="mb-2"><strong class="text-success">Response:</strong><pre class="mb-0 mt-1 p-2 rounded" style="background-color: rgba(0,0,0,0.3); max-height: 300px; overflow-y: auto;"><code>${JSON.stringify(message.response, null, 2)}</code></pre></div>`;
+                        }
+                        
+                        if (message.error) {
+                            detailsHtml += `<div class="mb-2"><strong class="text-danger">Error:</strong> <span class="text-danger">${message.error}</span></div>`;
+                        }
+                        
+                        let statsHtml = '';
+                        if (message.duration_ms) statsHtml += `Duration: ${Math.round(message.duration_ms)}ms`;
+                        if (message.prompt_tokens) statsHtml += ` | Prompt: ${message.prompt_tokens}`;
+                        if (message.completion_tokens) statsHtml += ` | Completion: ${message.completion_tokens}`;
+                        if (message.total_tokens) statsHtml += ` | Total: ${message.total_tokens} tokens`;
+                        
+                        div.innerHTML = `
+                            <div class="llm-call-container mb-2">
+                                <div class="d-flex align-items-center" style="cursor: pointer;" onclick="document.getElementById('${uniqueId}').classList.toggle('d-none'); this.querySelector('.llm-toggle-icon').classList.toggle('fa-chevron-right'); this.querySelector('.llm-toggle-icon').classList.toggle('fa-chevron-down');">
+                                    <span class="badge ${statusBadge} me-2"><i class="fas fa-robot me-1"></i>LLM</span>
+                                    <i class="fas fa-chevron-right llm-toggle-icon me-2" style="font-size: 0.7em;"></i>
+                                    <span class="${textClass}">${message.summary}</span>
+                                </div>
+                                <div id="${uniqueId}" class="d-none mt-2 ms-4 p-2 border rounded" style="background-color: rgba(100, 100, 255, 0.1);">
+                                    ${detailsHtml}
+                                    <div class="small text-muted">${statsHtml}</div>
+                                </div>
+                            </div>`;
+                    } else {
+                        div.innerHTML = `<span class="badge ${badgeClass}">${message.type}</span> ${JSON.stringify(message)}`;
+                    }
+
+                    streamMessages.appendChild(div);
+                    streamMessages.scrollTop = streamMessages.scrollHeight;
+                } catch (e) {
+                    // Non-JSON line
+                    const div = document.createElement('div');
+                    div.className = 'message-line mb-1';
+                    div.textContent = line;
+                    streamMessages.appendChild(div);
+                }
+            }
+        }
+    } catch (e) {
+        const div = document.createElement('div');
+        div.className = 'message-line mb-1 text-danger';
+        div.textContent = 'Error: ' + e.message;
+        streamMessages.appendChild(div);
+    }
+});
+</script>
+{% endblock %}
+

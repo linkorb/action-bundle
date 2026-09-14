@@ -1,0 +1,40 @@
+{
+    "name": "linkorb/action-bundle",
+    "description": "Symfony bundle for managing and executing FaaS-like Actions",
+    "license": "proprietary",
+    "type": "symfony-bundle",
+    "keywords": ["action", "faas", "linkorb"],
+    "authors": [
+        {
+            "name": "LinkORB Engineering",
+            "email": "engineering@linkorb.com",
+            "role": "Development"
+        }
+    ],
+    "homepage": "https://github.com/linkorb/action-bundle",
+    "require": {
+        "php": ">=8.2",
+        "doctrine/doctrine-bundle": "*",
+        "doctrine/orm": "*",
+        "linkorb/action-component": "*",
+        "linkorb/xuid": "^1.4",
+        "mcp/sdk": "^0.2",
+        "nyholm/psr7": "^1.8",
+        "psr/log": "^2.0 || ^3.0",
+        "symfony/console": "^6.4 || ^7.0",
+        "symfony/framework-bundle": "^6.4 || ^7.2",
+        "symfony/http-client": "^6.4 || ^7.0",
+        "symfony/psr-http-message-bridge": "^6.4 || ^7.0",
+        "symfony/security-bundle": "^6.4 || ^7.0",
+        "symfony/twig-bundle": "^6.4 || ^7.0",
+        "twig/twig": "^3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "LinkORB\\Bundle\\ActionBundle\\": "src/"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    }
+}

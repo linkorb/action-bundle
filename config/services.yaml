@@ -1,0 +1,44 @@
+services:
+  _defaults:
+    autowire: true
+    autoconfigure: true
+    public: false
+
+  LinkORB\Bundle\ActionBundle\:
+    resource: '../src/*'
+    exclude:
+      - '../src/Command/DynamicActionCommand.php'
+
+  LinkORB\Bundle\ActionBundle\Controller\McpController:
+    arguments:
+      $cacheDir: '%kernel.cache_dir%'
+
+  LinkORB\Bundle\ActionBundle\Service\ActionApprovalService:
+    arguments:
+      $rules:
+        - { caller: '*', action: '*', effect: 'allow' }
+      $defaultTimeoutMinutes: 10
+
+  # Dynamic action command loader - provides lazy-loaded commands for all actions
+  LinkORB\Bundle\ActionBundle\Command\ActionCommandLoader:
+    tags:
+      - { name: console.command_loader }
+
+  LinkORB\Component\Action\ActionManager:
+    public: true
+
+  LinkORB\Component\Action\Factory\ActionPackFactory:
+    public: true
+
+  LinkORB\Component\Action\Factory\ConfigFactory:
+    public: true
+
+  # Register example ActionPacks
+  LinkORB\Bundle\ActionBundle\ActionPack\DemoActionPack:
+    tags: ['action.pack']
+
+  LinkORB\Bundle\ActionBundle\ActionPack\LocationActionPack:
+    tags: ['action.pack']
+
+  LinkORB\Bundle\ActionBundle\ActionPack\WeatherActionPack:
+    tags: ['action.pack']
